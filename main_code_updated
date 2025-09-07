@@ -33,6 +33,7 @@ roll_events <- function(tributes, events, time){
   while (i > 0){
    option = slice_sample(pool |> filter(!(event_text %in% already_pool)))
    if (option$value > i){
+i = i 
    } else {
    
    if (option$value > 0){
