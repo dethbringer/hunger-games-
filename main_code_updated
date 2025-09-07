@@ -1,0 +1,118 @@
+#set up #####
+
+library(tidyverse)
+# (set to your own wd) #####
+setwd("C:/")
+library(mgsub)
+library(readxl)
+
+
+tributes <- read_xlsx("hunger_games_cici_edition.xlsx")
+all_tributes <- tributes
+
+events <- read_csv("Hunger_games_events_eco_measurement.csv")
+
+rollcall <- tributes
+
+stats = data.frame(tributes = tributes, kills = 0, alive = "y")
+# functions #####
+
+roll_events <- function(tributes, events, time){
+  if (time == "b"){
+  pool = events |> filter(event_time == "b_s" | event_time == "b_t") |> mutate(value = case_when(event_time == "b_s" ~ 1, event_time == "b_t" ~ 2))
+  } else if (time == "n"){
+    pool = events |> filter(event_time == "n_s" | event_time == "n_t" | event_time == "s_x") |> mutate(value = case_when(event_time == "n_s" ~ 1, event_time == "n_t" ~ 2, event_lethal == "b" ~ 2, event_lethal == "t" ~ 3, event_lethal == "r" ~ 0))
+  }
+  tribs = sample_n(tributes, size = length(tributes$People))
+  built_pool = c()
+  already_pool = c()
+  effects_d = c()
+  effects_r = c()
+  effects_k = c()
+  i = length(tributes$People)
+  while (i > 0){
+   option = slice_sample(pool |> filter(!(event_text %in% already_pool)))
+   if (option$value > i){
+   } else {
+   
+   if (option$value > 0){
+   peeps = sample_n(tribs, size = option$value)
+   } else {
+     peeps = sample_n(all_tributes |> filter(!(People %in% tributes$People)), size = 1)
+   }
+   tribs = tribs |> filter(!(People %in% peeps$People))
+   next_ev = mgsub(option$event_text, c("@", "#", "~"), c(peeps[1,], peeps[2,], peeps[3,]))
+   # do actual event
+   if (option$event_time != "s_x"){
+   if (option$event_lethal == "y" & option$value == 1){
+     effects_d = c(effects_d, peeps[1,])
+   } else if (option$event_lethal == "y" & option$value == 2){
+     effects_d = c(effects_d, peeps[2,])
+     effects_k = c(effects_k, peeps[1,])
+     
+   }
+   } else {
+     if (option$value == 2){
+       effects_d = c(effects_d, peeps[1,], peeps[2,])
+     } else if (option$value == 0){
+       effects_r = c(effects_r, peeps[1,])
+     }
+   }
+   
+   built_pool = c(built_pool, next_ev)
+   already_pool = c(already_pool, option$event_text)
+   i = i - option$value
+   }
+  }
+  return(list(events = built_pool, dead = effects_d, alive = effects_r, kills = effects_k))
+}
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!#####
+# bloodbath ##### 
+bloodbath <- roll_events(tributes, events, time = "b")
+stats <- stats |> mutate(kills = case_when(People %in% bloodbath$kills ~ kills + 1,
+                                           T ~ kills)) %>% mutate(alive = case_when(
+                                             People %in% bloodbath$dead ~ "n",
+                                             T ~ alive
+                                           ))
+
+tributes <- tributes |> filter(!(People %in% bloodbath$dead))
+
+
+# text out #
+# events ####
+print(paste0(c(as.character(bloodbath$events))))
+# dead! ####
+print(paste0(c("The Dead :", as.character(bloodbath$dead))))
+# stats ####
+print(stats |> arrange(by = desc(kills)) |> arrange(by = desc(alive)))
+
+
+# !!!!!!!!!!!!!!!!!!!!!!!! ###################
+# normal rounds ##### 
+bloodbath <- roll_events(tributes, events, time = "n")
+stats <- stats |> mutate(kills = case_when(People %in% bloodbath$kills ~ kills + 1,
+                                           T ~ kills)) %>% mutate(alive = case_when(
+                                             People %in% bloodbath$dead ~ "n",
+                                             People %in% bloodbath$alive ~ "y",
+                                             T ~ alive
+                                           ))
+
+tributes <- tributes |> filter(!(People %in% bloodbath$dead))
+tributes <- rbind(tributes, all_tributes |> filter(People %in% bloodbath$alive))
+
+# text out #
+# events ####
+print(paste0(c(as.character(bloodbath$events))))
+# dead! ####
+print(paste0(c("The Dead :", as.character(bloodbath$dead))))
+# stats ####
+print(stats |> arrange(by = desc(kills)) |> arrange(by = desc(alive)))
+
+
+
+
+
+
+
+
