@@ -1,21 +1,19 @@
 #set up #####
-
+# use "install.packages()" to get these if you don't already ##
 library(tidyverse)
-# (set to your own wd) #####
-setwd("C:/")
 library(mgsub)
 library(readxl)
+# (set to your own wd) #####
+setwd("C:/")
 
-
+# reading in the files ##
 tributes <- read_xlsx("hunger_games_cici_edition.xlsx")
-all_tributes <- tributes
-
 events <- read_csv("Hunger_games_events_eco_measurement.csv")
-
-rollcall <- tributes
-
+# setting a global tribute counter for revival purposes ##
+all_tributes <- tributes
+# stats tracker, empty ## 
 stats = data.frame(tributes = tributes, kills = 0, alive = "y")
-# functions #####
+# event function #####
 
 roll_events <- function(tributes, events, time){
   if (time == "b"){
@@ -79,8 +77,6 @@ stats <- stats |> mutate(kills = case_when(People %in% bloodbath$kills ~ kills +
 
 tributes <- tributes |> filter(!(People %in% bloodbath$dead))
 
-
-# text out #
 # events ####
 print(paste0(c(as.character(bloodbath$events))))
 # dead! ####
@@ -90,7 +86,7 @@ print(stats |> arrange(by = desc(kills)) |> arrange(by = desc(alive)))
 
 
 # !!!!!!!!!!!!!!!!!!!!!!!! ###################
-# normal rounds ##### 
+# normal rounds (repeatedly run until end) ##### 
 bloodbath <- roll_events(tributes, events, time = "n")
 stats <- stats |> mutate(kills = case_when(People %in% bloodbath$kills ~ kills + 1,
                                            T ~ kills)) %>% mutate(alive = case_when(
@@ -102,7 +98,6 @@ stats <- stats |> mutate(kills = case_when(People %in% bloodbath$kills ~ kills +
 tributes <- tributes |> filter(!(People %in% bloodbath$dead))
 tributes <- rbind(tributes, all_tributes |> filter(People %in% bloodbath$alive))
 
-# text out #
 # events ####
 print(paste0(c(as.character(bloodbath$events))))
 # dead! ####
